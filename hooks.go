@@ -3,6 +3,8 @@ package gogitlab
 import (
 	"encoding/json"
 	"net/url"
+	"reflect"
+	"strconv"
 )
 
 const (
@@ -11,9 +13,18 @@ const (
 )
 
 type Hook struct {
-	Id           int    `json:"id,omitempty"`
-	Url          string `json:"url,omitempty"`
-	CreatedAtRaw string `json:"created_at,omitempty"`
+	ID                    int    `json:"id,omitempty"`
+	URL                   string `json:"url,omitempty"`
+	CreatedAt             string `json:"created_at,omitempty"`
+	PushEvents            *bool  `json:"push_events,omitempty"`
+	IssuesEvents          *bool  `json:"issues_events,omitempty"`
+	MergeRequestsEvents   *bool  `json:"merge_requests_events,omitempty"`
+	TagPushEvents         *bool  `json:"tag_push_events,omitempty"`
+	NoteEvents            *bool  `json:"note_events,omitempty"`
+	BuildEvents           *bool  `json:"build_events,omitempty"`
+	PipelineEvents        *bool  `json:"pipeline_events,omitempty"`
+	WikiPageEvents        *bool  `json:"wiki_page_events,omitempty"`
+	EnableSSLVerification *bool  `json:"enable_ssl_verification,omitempty"`
 }
 
 /*
@@ -27,11 +38,9 @@ Parameters:
 
 */
 func (g *Gitlab) ProjectHooks(id string) ([]*Hook, error) {
+	var hooks []*Hook
 
 	url, opaque := g.ResourceUrlRaw(project_url_hooks, map[string]string{":id": id})
-
-	var err error
-	var hooks []*Hook
 
 	contents, err := g.buildAndExecRequestRaw("GET", url, opaque, nil)
 	if err != nil {
@@ -54,15 +63,12 @@ Parameters:
     hook_id The ID of a hook
 
 */
-func (g *Gitlab) ProjectHook(id, hook_id string) (*Hook, error) {
-
+func (g *Gitlab) ProjectHook(id string, hook_id int) (*Hook, error) {
+	hook := new(Hook)
 	url, opaque := g.ResourceUrlRaw(project_url_hook, map[string]string{
 		":id":      id,
-		":hook_id": hook_id,
+		":hook_id": strconv.Itoa(hook_id),
 	})
-
-	var err error
-	hook := new(Hook)
 
 	contents, err := g.buildAndExecRequestRaw("GET", url, opaque, nil)
 	if err != nil {
@@ -88,14 +94,11 @@ Parameters:
     merge_requests_events Trigger hook on merge_requests events
 
 */
-func (g *Gitlab) AddProjectHook(id, hook_url string, push_events, issues_events, merge_requests_events bool) error {
-
+func (g *Gitlab) AddProjectHook(id, hook *Hook) error {
 	url, opaque := g.ResourceUrlRaw(project_url_hooks, map[string]string{":id": id})
 
-	var err error
-
-	body := buildHookQuery(hook_url, push_events, issues_events, merge_requests_events)
-	_, err = g.buildAndExecRequestRaw("POST", url, opaque, []byte(body))
+	body := buildHookQuery(hook)
+	_, err := g.buildAndExecRequestRaw("POST", url, opaque, []byte(body))
 
 	return err
 }
@@ -115,17 +118,14 @@ Parameters:
     merge_requests_events Trigger hook on merge_requests events
 
 */
-func (g *Gitlab) EditProjectHook(id, hook_id, hook_url string, push_events, issues_events, merge_requests_events bool) error {
-
+func (g *Gitlab) EditProjectHook(id, hook *Hook) error {
 	url, opaque := g.ResourceUrlRaw(project_url_hook, map[string]string{
 		":id":      id,
-		":hook_id": hook_id,
+		":hook_id": strconv.Itoa(hook.ID),
 	})
 
-	var err error
-
-	body := buildHookQuery(hook_url, push_events, issues_events, merge_requests_events)
-	_, err = g.buildAndExecRequestRaw("PUT", url, opaque, []byte(body))
+	body := buildHookQuery(hook)
+	_, err := g.buildAndExecRequestRaw("PUT", url, opaque, []byte(body))
 
 	return err
 }
@@ -141,16 +141,13 @@ Parameters:
     hook_id The ID of hook to delete
 
 */
-func (g *Gitlab) RemoveProjectHook(id, hook_id string) error {
-
+func (g *Gitlab) RemoveProjectHook(id string, hook_id int) error {
 	url, opaque := g.ResourceUrlRaw(project_url_hook, map[string]string{
 		":id":      id,
-		":hook_id": hook_id,
+		":hook_id": strconv.Itoa(hook_id),
 	})
 
-	var err error
-
-	_, err = g.buildAndExecRequestRaw("DELETE", url, opaque, nil)
+	_, err := g.buildAndExecRequestRaw("DELETE", url, opaque, nil)
 
 	return err
 }
@@ -158,26 +155,16 @@ func (g *Gitlab) RemoveProjectHook(id, hook_id string) error {
 /*
 Build HTTP query to add or edit hook
 */
-func buildHookQuery(hook_url string, push_events, issues_events, merge_requests_events bool) string {
-
+func buildHookQuery(hook *Hook) string {
 	v := url.Values{}
-	v.Set("url", hook_url)
 
-	if push_events {
-		v.Set("push_events", "true")
-	} else {
-		v.Set("push_events", "false")
-	}
-	if issues_events {
-		v.Set("issues_events", "true")
-	} else {
-		v.Set("issues_events", "false")
-	}
-	if merge_requests_events {
-		v.Set("merge_requests_events", "true")
-	} else {
-		v.Set("merge_requests_events", "false")
-	}
+	ht := reflect.TypeOf(hook)
+	for i := 0; i < ht.NumField(); i++ {
+		cf := ht.Field(i)
+		if cf.Name == "ID" || cf.Name == "CreatedAt" {
+			continue
+		}
 
+	}
 	return v.Encode()
 }
