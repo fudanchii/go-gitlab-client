@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/plouc/go-gitlab-client"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"time"
+
+	gogitlab "github.com/fudanchii/go-gitlab-client"
 )
 
 type Config struct {

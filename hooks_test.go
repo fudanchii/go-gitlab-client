@@ -1,18 +1,19 @@
 package gogitlab
 
 import (
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHook(t *testing.T) {
 	ts, gitlab := Stub("stubs/hooks/show.json")
-	hook, err := gitlab.ProjectHook("1", "2")
+	hook, err := gitlab.ProjectHook("1", 2)
 
 	assert.Equal(t, err, nil)
 	assert.IsType(t, new(Hook), hook)
-	assert.Equal(t, hook.Url, "http://example.com/hook")
+	assert.Equal(t, hook.URL, "http://example.com/hook")
 	defer ts.Close()
 }
 
@@ -48,4 +49,22 @@ func TestParseMergeRequestHook(t *testing.T) {
 	assert.Equal(t, p.ObjectKind, "merge_request")
 	assert.Equal(t, p.ObjectAttributes.TargetBranch, "master")
 	assert.Equal(t, p.ObjectAttributes.SourceProjectId, p.ObjectAttributes.TargetProjectId)
+}
+
+func TestBuildHookQuery(t *testing.T) {
+	t_ := true
+	f_ := false
+	h := Hook{
+		ID:                    123214,
+		URL:                   "https://ci.example/hooks/test",
+		CreatedAt:             "",
+		PushEvents:            &t_,
+		IssuesEvents:          &t_,
+		MergeRequestsEvents:   &t_,
+		NoteEvents:            &f_,
+		BuildEvents:           &f_,
+		EnableSSLVerification: &t_,
+	}
+	q := buildHookQuery(&h)
+	assert.Equal(t, "", q)
 }

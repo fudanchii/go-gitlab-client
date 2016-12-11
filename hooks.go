@@ -96,7 +96,7 @@ Parameters:
     merge_requests_events Trigger hook on merge_requests events
 
 */
-func (g *Gitlab) AddProjectHook(id, hook *Hook) error {
+func (g *Gitlab) AddProjectHook(id string, hook *Hook) error {
 	url, opaque := g.ResourceUrlRaw(project_url_hooks, map[string]string{":id": id})
 
 	body := buildHookQuery(hook)
@@ -120,7 +120,7 @@ Parameters:
     merge_requests_events Trigger hook on merge_requests events
 
 */
-func (g *Gitlab) EditProjectHook(id, hook *Hook) error {
+func (g *Gitlab) EditProjectHook(id string, hook *Hook) error {
 	url, opaque := g.ResourceUrlRaw(project_url_hook, map[string]string{
 		":id":      id,
 		":hook_id": strconv.Itoa(hook.ID),
@@ -160,14 +160,21 @@ Build HTTP query to add or edit hook
 func buildHookQuery(hook *Hook) string {
 	v := url.Values{}
 
-	ht := reflect.TypeOf(hook)
-	hv := reflect.ValueOf(hook)
+	hv := reflect.ValueOf(hook).Elem()
+	ht := hv.Type()
 	for i := 0; i < ht.NumField(); i++ {
 		cf := ht.Field(i)
 		if cf.Name == "ID" || cf.Name == "CreatedAt" {
 			continue
 		}
-		v.Set(strings.Split(cf.Tag.Get("json"), ",")[0], fmt.Sprintf("%v", hv.FieldByName(cf.Name)))
+		val := hv.FieldByName(cf.Name)
+		if val.Kind() == reflect.Ptr {
+			if val.IsNil() {
+				continue
+			}
+			val = val.Elem()
+		}
+		v.Set(strings.Split(cf.Tag.Get("json"), ",")[0], fmt.Sprintf("%v", val))
 	}
 	return v.Encode()
 }
