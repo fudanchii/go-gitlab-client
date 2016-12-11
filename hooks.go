@@ -2,9 +2,11 @@ package gogitlab
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -159,12 +161,13 @@ func buildHookQuery(hook *Hook) string {
 	v := url.Values{}
 
 	ht := reflect.TypeOf(hook)
+	hv := reflect.ValueOf(hook)
 	for i := 0; i < ht.NumField(); i++ {
 		cf := ht.Field(i)
 		if cf.Name == "ID" || cf.Name == "CreatedAt" {
 			continue
 		}
-
+		v.Set(strings.Split(cf.Tag.Get("json"), ",")[0], fmt.Sprintf("%v", hv.FieldByName(cf.Name)))
 	}
 	return v.Encode()
 }
