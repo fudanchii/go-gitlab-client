@@ -4,11 +4,11 @@ package gogitlab
 import (
 	"bytes"
 	"crypto/tls"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 )
 
@@ -29,12 +29,17 @@ const (
 )
 
 var (
-	skipCertVerify = flag.Bool("gitlab.skip-cert-check", false,
-		`If set to true, gitlab client will skip certificate checking for https, possibly exposing your system to MITM attack.`)
+	skipCertVerify = os.Getenv("GITLAB_API_INSECURE")
 )
 
 func NewGitlab(baseUrl, apiPath, token string) *Gitlab {
-	config := &tls.Config{InsecureSkipVerify: *skipCertVerify}
+	var insecure = false // secure by default
+
+	if len(skipCertVerify) > 0 &&
+		(skipCertVerify != "0" && skipCertVerify != "no" && skipCertVerify != "false") {
+		insecure = true
+	}
+	config := &tls.Config{InsecureSkipVerify: insecure}
 	tr := &http.Transport{
 		Proxy:           http.ProxyFromEnvironment,
 		TLSClientConfig: config,

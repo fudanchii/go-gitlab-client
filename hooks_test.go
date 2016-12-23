@@ -2,6 +2,7 @@ package gogitlab
 
 import (
 	"io/ioutil"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,7 +10,7 @@ import (
 
 func TestHook(t *testing.T) {
 	ts, gitlab := Stub("stubs/hooks/show.json")
-	hook, err := gitlab.ProjectHook("1", 2)
+	hook, err := gitlab.ProjectHook("3", 1)
 
 	assert.Equal(t, err, nil)
 	assert.IsType(t, new(Hook), hook)
@@ -66,5 +67,12 @@ func TestBuildHookQuery(t *testing.T) {
 		EnableSSLVerification: &t_,
 	}
 	q := buildHookQuery(&h)
-	assert.Equal(t, "", q)
+	assert.Contains(t, q, "url="+url.QueryEscape("https://ci.example/hooks/test"))
+	assert.NotContains(t, q, "created_at=")
+	assert.Contains(t, q, "push_events=true")
+	assert.Contains(t, q, "issues_events=true")
+	assert.Contains(t, q, "merge_requests_events=true")
+	assert.Contains(t, q, "note_events=false")
+	assert.Contains(t, q, "build_events=false")
+	assert.Contains(t, q, "enable_ssl_verification=true")
 }
